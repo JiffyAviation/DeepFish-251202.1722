@@ -1,0 +1,7 @@
+{
+  "name": "DeepFish AI Studio",
+  "description": "DeepFish AI (Beta 251125.1830): Functionality is cheap; Personality is expensive. A character-driven virtual software studio where the quirks of your AI staff (Mei, Vesper, Root) drive the product.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
