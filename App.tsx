@@ -1,9 +1,9 @@
 
-
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import { Labs } from './components/Labs';
+import { GodMode } from './components/GodMode';
 import { ROOMS, INITIAL_AGENTS } from './constants';
 import { useAgentEngine } from './hooks/useAgentEngine';
 
@@ -27,19 +27,44 @@ const App: React.FC = () => {
     createNewAgent,
     toggleOracleMode,
     triggerBackup,
-    restoreFromSnapshot, // Added restore function
+    restoreFromSnapshot,
     markMemoAsRead,
     replyToMemo,
     setMemoStatus
   } = useAgentEngine({ initialAgents: INITIAL_AGENTS, initialRooms: ROOMS });
 
-  // Local input state for the UI
+  // UI State
   const [input, setInput] = useState("");
+  const [godModeAgentId, setGodModeAgentId] = useState<string | null>(null);
+  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
 
   const onSelectRoom = (id: string) => {
     setActiveRoomId(id);
     setTempActiveAgentId(null);
     setIsLabsOpen(false);
+    setGodModeAgentId(null);
+    setEditingAgentId(null);
+  };
+
+  const onSelectAgent = (agentId: string) => {
+      // Logic to switch to specific agent even if they don't have a room
+      setTempActiveAgentId(agentId);
+      // Find which room they are closest to, or just keep current room but switch agent context
+      // For UX, if they have a room, go there. If not, stay in current room but override agent.
+      const room = ROOMS.find(r => r.agentId === agentId);
+      if (room) {
+          setActiveRoomId(room.id);
+          setTempActiveAgentId(null);
+      }
+      setIsLabsOpen(false);
+      setGodModeAgentId(null);
+      setEditingAgentId(null);
+  };
+
+  const handleEditAgent = (agentId: string) => {
+      setEditingAgentId(agentId);
+      setGodModeAgentId(null);
+      setIsLabsOpen(true);
   };
 
   const handleSend = () => {
@@ -47,7 +72,7 @@ const App: React.FC = () => {
     setInput("");
   };
 
-  const handleVoiceWrapper = (text: string) => {
+  const handleVoiceWrapper = useCallback((text: string) => {
     const remainingText = handleVoiceCommand(text);
     if (remainingText) {
       setInput(remainingText);
@@ -56,7 +81,7 @@ const App: React.FC = () => {
         setInput("");
       }, 500);
     }
-  };
+  }, [handleVoiceCommand, handleSendMessage]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -80,8 +105,10 @@ const App: React.FC = () => {
       
       <Sidebar 
         activeRoomId={activeRoom.isBoardroom ? 'boardroom' : activeRoom.id}
+        activeAgentId={activeAgent.id}
         onSelectRoom={onSelectRoom}
-        onOpenLabs={() => setIsLabsOpen(true)}
+        onSelectAgent={onSelectAgent}
+        onOpenLabs={() => { setIsLabsOpen(true); setEditingAgentId(null); }}
         isLabsOpen={isLabsOpen}
         onToggleOracleMode={toggleOracleMode}
         isOracleMode={isOracleMode}
@@ -89,12 +116,24 @@ const App: React.FC = () => {
         onRestore={restoreFromSnapshot}
         onToggleFullscreen={toggleFullscreen}
         inboxCount={unreadCount}
+        onOpenGodMode={(id) => setGodModeAgentId(id)}
+        onEditAgent={handleEditAgent}
       />
 
       {/* Main Content Router */}
       <div className="flex-1 flex flex-col relative">
-        {isLabsOpen ? (
-          <Labs agents={agents} onCreateAgent={createNewAgent} />
+        {godModeAgentId ? (
+            <GodMode 
+                agent={agents[godModeAgentId]} 
+                onClose={() => setGodModeAgentId(null)}
+                onEdit={() => handleEditAgent(godModeAgentId)}
+            />
+        ) : isLabsOpen ? (
+          <Labs 
+            agents={agents} 
+            onCreateAgent={createNewAgent} 
+            initialAgentId={editingAgentId}
+          />
         ) : (
           <ChatArea 
             messages={messages}
@@ -116,7 +155,7 @@ const App: React.FC = () => {
         )}
         
         {/* Visual Indicator of Mei's Presence */}
-        {!isOracleMode && (
+        {!isOracleMode && !godModeAgentId && !isLabsOpen && (
             <div className="absolute top-4 right-4 z-50 pointer-events-none">
             <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-zinc-800">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>

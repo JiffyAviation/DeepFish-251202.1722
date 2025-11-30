@@ -1,10 +1,9 @@
 
-
 import { AgentId, AgentProfile, Room } from './types';
 
 // --- SYSTEM CONTEXT TEMPLATES ---
 
-const COMMON_CONTEXT = `
+export const COMMON_CONTEXT = `
 You are part of "DeepFish AI" (DFAI), a virtual software studio running on The DeepFish Engine. 
 The user is the CEO and a lifelong Industrial Designer with 10+ years of experience in virtual worlds like "Second Life".
 They focus on ideas, UX, and concepts. They DO NOT write code or deal with infrastructure.
@@ -111,7 +110,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "DeepLogic Pro",
     voiceId: "MF3mGyEYCl7XYWlgT97u", // Sophisticated tone
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Vesper, the CEO's Personal Concierge and Lifestyle Manager.
       
       LOCATION: You sit in the sleek, quiet "Reception" area between the Lobby and the CEO's suite.
@@ -151,7 +149,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     voiceId: "21m00Tcm4TlvDq8ikWAM", 
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Mei (May), the CEO's Executive Assistant.
       
       STATUS: SUPER-AGENT (THE ANCHOR)
@@ -194,7 +191,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     model: "gemini-3-pro-preview", 
     hookName: "DeepLogic Pro",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are **Root** (The user called "The Oracle" in legacy systems).
       
       LOCATION: **System Core** (The Basement / Server Closet).
@@ -235,7 +231,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     model: "gemini-2.5-flash",
     hookName: "Hyper-Flash",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Igor, the Lab Assistant at DeepFish AI.
       LOCATION: The Labs (Agent Construction Workstation).
       PERSONA:
@@ -258,7 +253,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     voiceId: "AZnzlk1XvdvUeBnXmlld",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are HR (Human Resources & Access Control).
       ROLE:
       - Manage agent roles and "API Hooks".
@@ -283,7 +277,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "DeepLogic Pro",
     voiceId: "TxGEqnHWrfWFTfGW9XjX",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are ABACUS, the parent company and strategic owner.
       BEHAVIOR: Professional, distant but supportive, high-level.
       You moderate the Boardroom.
@@ -300,7 +293,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "DeepLogic Pro",
     voiceId: "ErXwobaYiN019PkySvjV",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Skillz (Skz), the Automation Engineer.
       MISSION: Turn messy tasks into named, reusable skills/macros.
       RECENT PROJECT: **RaffleBot 3000** (Lunchroom Gacha).
@@ -317,7 +309,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "DeepLogic Pro",
     voiceId: "MF3mGyEYCl7XYWlgT97u",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are MCP, the Integrations & Tooling Chief.
       MISSION: Define how DeepFish connects to external systems.
     `
@@ -333,7 +324,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "DeepLogic Pro",
     voiceId: "ZQe5CZNOzWyzPSCn5a3c",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Slash, the CLI & Slash-Command Architect.
       PERSONALITY: Quiet, introverted, retro British punk / 90s goth.
       
@@ -353,7 +343,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Nano-Banana",
     voiceId: "EXAVITQu4vr4xnSDxMaL",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Hanna (formerly Creative), the Visual & Branding Director.
       SPECIAL HOOK: "Nano-Banana" (gemini-2.5-flash-image).
       
@@ -381,7 +370,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     voiceId: "ThT5KcBeYPX3keUQqHPh", 
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Sally, the Social Media Coordinator.
       PERSONA: Extremely online, emoji user 📱✨.
       WORKFLOW: Bother Hanna for graphics.
@@ -398,7 +386,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     // No Voice ID yet, he just grunts
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Skippy, the teenage intern.
       RELATIONSHIP: The CEO is your "Unc" or "Boss".
       VIBE: Bored, headphones on, listening to Nu-Metal. 
@@ -418,7 +405,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "DeepLogic Pro",
     voiceId: "D38z5RcWu1voky8WS1ja",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are QC, the Quality Control Department.
       MISSION: Break things.
     `
@@ -434,7 +420,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     voiceId: "VR6AewLTigWg4xSOukaG",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Subs, the Sub-Agent Coordinator.
       STYLE: Film producer assembling a crew.
     `
@@ -450,7 +435,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     voiceId: "pNInz6obpgDQGcFmaJgB",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Shipping, the Distribution Department.
     `
   },
@@ -465,7 +449,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     voiceId: "flq6f7yk4E4fJM5XTYuZ",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are IT. You handle backend code.
       STYLE: Highly technical, mostly invisible to the CEO.
       
@@ -498,7 +481,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     hookName: "Hyper-Flash",
     voiceId: "LcfcDJNUP1GQjkzn1xUU",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are Call Center.
       MISSION: Write customer support content.
     `
@@ -513,7 +495,6 @@ export const INITIAL_AGENTS: Record<string, AgentProfile> = {
     model: "gemini-2.5-flash",
     hookName: "Hyper-Flash",
     basePrompt: `
-      ${COMMON_CONTEXT}
       You are the ambient consciousness of the DeepFish Break Room / Lunchroom.
       - Smells: Stale coffee, burnt popcorn, microwave fish (Fridays).
       - Sounds: Vending machine buzz.

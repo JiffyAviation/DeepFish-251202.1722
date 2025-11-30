@@ -1,10 +1,8 @@
-
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AgentId, Message, Role, Room, AgentProfile, UpdateAgentArgs, Memory, StoreMemoryArgs, RaffleActionArgs, ExecutiveMemo, SendMemoArgs, MemoMessage } from '../types';
 import { sendMessageToAgent } from '../services/geminiService';
 import { playTextToSpeech } from '../services/elevenLabs';
-import { ORACLE_OVERRIDE_PROMPT } from '../constants';
+import { ORACLE_OVERRIDE_PROMPT, COMMON_CONTEXT } from '../constants';
 
 interface UseAgentEngineProps {
   initialAgents: Record<string, AgentProfile>;
@@ -196,19 +194,19 @@ The Architect watches.
 
   // --- ACTIONS ---
 
-  const appendMessage = (key: string, msg: Message) => {
+  const appendMessage = useCallback((key: string, msg: Message) => {
     setRoomMessages(prev => ({
       ...prev,
       [key]: [...(prev[key] || []), msg]
     }));
-  };
+  }, []);
 
-  const appendGlobalLog = (entry: string) => {
+  const appendGlobalLog = useCallback((entry: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setGlobalLog(prev => [`[${timestamp}] ${entry}`, ...prev].slice(50));
-  };
+  }, []);
 
-  const updateAgentProfile = (targetId: string, newInstructions: string) => {
+  const updateAgentProfile = useCallback((targetId: string, newInstructions: string) => {
     setAgents(prev => ({
       ...prev,
       [targetId]: {
@@ -216,17 +214,17 @@ The Architect watches.
         customInstructions: newInstructions
       }
     }));
-  };
+  }, []);
 
-  const createNewAgent = (agent: AgentProfile) => {
+  const createNewAgent = useCallback((agent: AgentProfile) => {
     setAgents(prev => ({
       ...prev,
       [agent.id]: agent
     }));
     appendGlobalLog(`New Agent Created in Labs: ${agent.name} (${agent.title})`);
-  };
+  }, [appendGlobalLog]);
 
-  const addMemory = (content: string, category: Memory['category'], triggerContext?: string) => {
+  const addMemory = useCallback((content: string, category: Memory['category'], triggerContext?: string) => {
     const newMemory: Memory = {
       id: Date.now().toString(),
       content,
@@ -235,9 +233,9 @@ The Architect watches.
       timestamp: new Date()
     };
     setMemories(prev => [newMemory, ...prev]);
-  };
+  }, []);
 
-  const sendMemo = (senderId: string, subject: string, body: string) => {
+  const sendMemo = useCallback((senderId: string, subject: string, body: string) => {
       // Check if thread exists
       setInbox(prev => {
           const existing = prev.find(m => m.subject === subject && m.senderId === senderId);
@@ -271,17 +269,17 @@ The Architect watches.
             return [newMemo, ...prev];
           }
       });
-  };
+  }, [appendGlobalLog]);
 
-  const markMemoAsRead = (memoId: string) => {
+  const markMemoAsRead = useCallback((memoId: string) => {
       setInbox(prev => prev.map(m => m.id === memoId ? { ...m, isRead: true } : m));
-  };
+  }, []);
 
-  const setMemoStatus = (memoId: string, status: 'active' | 'archived' | 'deleted') => {
+  const setMemoStatus = useCallback((memoId: string, status: 'active' | 'archived' | 'deleted') => {
       setInbox(prev => prev.map(m => m.id === memoId ? { ...m, status } : m));
-  };
+  }, []);
 
-  const replyToMemo = async (memoId: string, text: string) => {
+  const replyToMemo = useCallback(async (memoId: string, text: string) => {
       // 1. Add User Message to Thread
       const userMsg: MemoMessage = {
           id: Date.now().toString(),
@@ -378,14 +376,14 @@ The Architect watches.
               console.error("Memo reply failed", e);
           }
       }, 2000);
-  };
+  }, [agents, appendGlobalLog]);
 
-  const toggleOracleMode = () => {
+  const toggleOracleMode = useCallback(() => {
     setIsOracleMode(prev => !prev);
-  };
+  }, []);
 
   // --- SYSTEM SNAPSHOT (BACKUP) ---
-  const triggerBackup = () => {
+  const triggerBackup = useCallback(() => {
     const snapshot = {
         meta: {
             version: "Beta 251125.1830",
@@ -413,10 +411,10 @@ The Architect watches.
     URL.revokeObjectURL(url);
     
     appendGlobalLog("SYSTEM SNAPSHOT SAVED TO LOCAL STORAGE.");
-  };
+  }, [agents, globalLog, memories, inbox, raffleTickets, lastTicketDate, roomMessages, appendGlobalLog]);
 
   // --- RESTORE SNAPSHOT (CRASH DIVE) ---
-  const restoreFromSnapshot = (snapshot: any) => {
+  const restoreFromSnapshot = useCallback((snapshot: any) => {
       try {
           if (snapshot.meta?.engine !== "DeepFish Core") {
               alert("Invalid Snapshot File: Not a DeepFish Core backup.");
@@ -459,7 +457,7 @@ The Architect watches.
           console.error("Restore failed", e);
           alert("Critical Error during System Restore.");
       }
-  };
+  }, [appendGlobalLog]);
 
   // --- AI LOGIC ---
 
@@ -467,7 +465,12 @@ The Architect watches.
     const agent = agents[targetAgentId];
     if (!agent) return "Agent not found.";
 
-    let prompt = `${agent.basePrompt}`;
+    // INJECT COMMON CONTEXT
+    let prompt = agent.basePrompt;
+    if (targetAgentId !== AgentId.ORACLE) {
+        prompt = `${COMMON_CONTEXT}\n\n${prompt}`;
+    }
+
     if (agent.customInstructions) {
       prompt += `\n\nIMPORTANT UPDATED INSTRUCTIONS:\n${agent.customInstructions}`;
     }
@@ -546,7 +549,7 @@ The Architect watches.
     return prompt;
   };
 
-  const handleSendMessage = async (input: string) => {
+  const handleSendMessage = useCallback(async (input: string) => {
     if (!input.trim()) return;
 
     const newMessage: Message = {
@@ -693,7 +696,7 @@ The Architect watches.
             role: Role.MODEL,
             text: response.text,
             timestamp: new Date(),
-            agentId: currentSpeaker
+            agentId: currentSpeaker as AgentId
           });
 
           // Text to Speech
@@ -719,9 +722,9 @@ The Architect watches.
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeRoom, activeAgentId, tempActiveAgentId, agents, historyKey, isOracleMode, messages, appendGlobalLog, updateAgentProfile, addMemory, sendMemo, activeAgent]);
 
-  const handleVoiceCommand = (transcript: string) => {
+  const handleVoiceCommand = useCallback((transcript: string) => {
     const lower = transcript.toLowerCase();
     
     if (lower.includes("lab") || lower.includes("workstation")) {
@@ -760,7 +763,7 @@ The Architect watches.
     }
 
     return transcript; 
-  };
+  }, [agents, initialRooms]);
 
   return {
     agents,

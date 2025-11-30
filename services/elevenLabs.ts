@@ -1,7 +1,8 @@
+
 // Simple client-side service for ElevenLabs TTS
 // In a production app, this should be proxied through a backend to hide the API key.
 
-const ELEVEN_LABS_API_KEY = process.env.ELEVEN_LABS_API_KEY;
+const ELEVEN_LABS_API_KEY = process.env.ELEVEN_LABS_API_KEY || "sk_dcc131a18ba9fa2ab4d98608efd58f834e433b1d74f7b995";
 
 export const playTextToSpeech = async (text: string, voiceId: string): Promise<void> => {
   if (!ELEVEN_LABS_API_KEY) {

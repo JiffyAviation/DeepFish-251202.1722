@@ -4,6 +4,7 @@ import { LucideProps } from 'lucide-react';
 
 interface IconProps extends LucideProps {
   name: string;
+  className?: string;
 }
 
 export const Icon: React.FC<IconProps> = ({ name, ...props }) => {
