@@ -35,7 +35,10 @@ export const playTextToSpeech = async (text: string, voiceId: string): Promise<v
 
     if (!response.ok) {
       const err = await response.json();
-      console.error("ElevenLabs Error:", err);
+      // ElevenLabs standard error format is often { detail: { status: "...", message: "..." } } 
+      // or just { detail: "message" }
+      const errorMessage = err?.detail?.message || err?.detail || err?.message || JSON.stringify(err);
+      console.error(`ElevenLabs API Error (${response.status}):`, errorMessage);
       return;
     }
 
@@ -48,8 +51,18 @@ export const playTextToSpeech = async (text: string, voiceId: string): Promise<v
             resolve();
             URL.revokeObjectURL(audioUrl);
         };
-        audio.onerror = reject;
-        audio.play();
+        audio.onerror = (e) => {
+             console.error("Audio Playback Error:", e);
+             reject(e);
+        };
+        // Handle autoplay restrictions
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(e => {
+                console.error("Audio Play Error (Autoplay Blocked?):", e);
+                reject(e);
+            });
+        }
     });
 
   } catch (error) {

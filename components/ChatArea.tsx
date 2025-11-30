@@ -9,7 +9,7 @@ interface ChatAreaProps {
   activeAgent: AgentProfile;
   input: string;
   setInput: (val: string) => void;
-  onSend: () => void;
+  onSend: (image?: string) => void; // Updated signature
   isLoading: boolean;
   roomName: string;
   themeColor: string;
@@ -43,6 +43,7 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
   const memoThreadEndRef = useRef<HTMLDivElement>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Right Panel State
   const [rightPanel, setRightPanel] = useState<'none' | 'inbox' | 'details'>('none');
@@ -52,6 +53,12 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
   const [inboxTab, setInboxTab] = useState<'inbox' | 'logbook'>('inbox');
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+
+  // Attachment State
+  const [attachment, setAttachment] = useState<{ type: 'image', data: string, name: string } | null>(null);
+
+  // Preview / Code Runtime State
+  const [previewCode, setPreviewCode] = useState<string | null>(null);
 
   // Auto-open Inbox for Vesper
   useEffect(() => {
@@ -79,8 +86,43 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      onSend();
+      handleSendClick();
     }
+  };
+
+  const handleSendClick = () => {
+      onSend(attachment?.data); // Pass image if present
+      setAttachment(null); // Clear attachment
+  };
+
+  // FILE UPLOAD HANDLING
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const isImage = file.type.startsWith('image/');
+      
+      if (isImage) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+              const result = ev.target?.result as string;
+              // Strip header for API
+              const base64Data = result.split(',')[1]; 
+              setAttachment({ type: 'image', data: base64Data, name: file.name });
+          };
+          reader.readAsDataURL(file);
+      } else {
+          // Assume text/code
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+              const text = ev.target?.result as string;
+              // Inject content into input area
+              const newContent = input + (input ? '\n\n' : '') + `=== PROJECT FILE: ${file.name} ===\n${text}\n=== END FILE ===`;
+              setInput(newContent);
+          };
+          reader.readAsText(file);
+      }
+      e.target.value = ''; // Reset
   };
 
   const handleMemoReply = () => {
@@ -171,9 +213,17 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
           from { opacity: 0; transform: translateY(8px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-3px); }
+          100% { transform: translateY(0px); }
+        }
         .animate-mei-reveal {
           animation: mei-reveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
           transform-origin: bottom left;
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
         }
       `}</style>
 
@@ -266,6 +316,10 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
             const currentMessageAgent = AGENTS[messageAgentId] || activeAgent;
             const isMei = messageAgentId === AgentId.MEI && !isUser;
             
+            // Check for runnable code in the message
+            const htmlMatch = msg.text.match(/```html([\s\S]*?)```/);
+            const runnableCode = htmlMatch ? htmlMatch[1] : null;
+
             return (
                 <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] sm:max-w-[75%] flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -319,6 +373,21 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
                             {i < msg.text.split('\n').length - 1 && <br />}
                         </React.Fragment>
                         ))}
+                        
+                        {/* RUN PROTOTYPE BUTTON (ANTIGRAV) */}
+                        {runnableCode && (
+                            <div className="mt-4 border-t border-zinc-700/50 pt-3">
+                                <button 
+                                    onClick={() => setPreviewCode(runnableCode)}
+                                    className="animate-float w-full py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-md flex items-center justify-center gap-2 font-bold text-xs transition-colors shadow-lg shadow-emerald-900/20 group"
+                                >
+                                    <Icon name="Rocket" className="w-3 h-3 fill-current group-hover:-translate-y-0.5 transition-transform" />
+                                    LAUNCH ANTIGRAV MODULE
+                                </button>
+                                <div className="text-[9px] text-center mt-1 opacity-50 font-mono tracking-widest">ZERO_GRAVITY_DEPLOYMENT</div>
+                            </div>
+                        )}
+
                         <div className={`text-[10px] mt-2 opacity-50 ${isUser ? (isOracleMode ? 'text-green-400' : 'text-blue-200') : (isOracleMode ? 'text-green-800' : 'text-zinc-500')}`}>
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
@@ -353,23 +422,54 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
         <div className={`p-4 sm:p-6 border-t relative z-10 shrink-0
             ${isOracleMode ? 'bg-black border-green-900' : 'bg-zinc-900 border-zinc-800'}
         `}>
+            {/* Attachment Preview */}
+            {attachment && (
+                <div className="absolute top-[-50px] left-6 bg-zinc-800 p-2 rounded-t-lg border border-zinc-700 flex items-center gap-3">
+                    {attachment.type === 'image' && (
+                        <div className="w-8 h-8 rounded overflow-hidden bg-black border border-zinc-600">
+                             <img src={`data:image/png;base64,${attachment.data}`} className="w-full h-full object-cover" alt="preview" />
+                        </div>
+                    )}
+                    <span className="text-xs text-zinc-300 truncate max-w-[150px]">{attachment.name}</span>
+                    <button onClick={() => setAttachment(null)} className="hover:text-red-400"><Icon name="X" className="w-3 h-3" /></button>
+                </div>
+            )}
+
             <div className={`relative rounded-xl border transition-colors focus-within:ring-1 focus-within:ring-offset-0 focus-within:ring-offset-zinc-900 focus-within:border-transparent
             ${isOracleMode 
                 ? 'bg-black border-green-900 focus-within:ring-green-700' 
                 : `bg-zinc-950 ${themeColor.replace('border-', 'focus-within:ring-')}`
             }
             `}>
+            
             <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={isOracleMode ? `// ENTER COMMAND FOR NODE: ${activeAgent.name}` : `Message ${activeAgent.name}...`}
-                className={`w-full bg-transparent p-4 pr-24 outline-none resize-none min-h-[60px] max-h-[200px]
+                className={`w-full bg-transparent p-4 pl-12 pr-24 outline-none resize-none min-h-[60px] max-h-[200px]
                 ${isOracleMode ? 'text-green-500 font-mono placeholder-green-900' : 'text-zinc-200'}
                 `}
                 rows={1}
                 disabled={isLoading}
             />
+            
+            <div className="absolute left-2 bottom-2">
+                 <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-zinc-500 hover:text-indigo-400 transition-colors"
+                    title="Attach Project File (Image or Text)"
+                >
+                    <Icon name="Paperclip" className="w-5 h-5" />
+                </button>
+                <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    accept="image/*, .txt, .md, .js, .ts, .json, .csv"
+                />
+            </div>
             
             <div className="absolute right-2 bottom-2 flex gap-2">
                 {!isOracleMode && (
@@ -388,10 +488,10 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
                 )}
 
                 <button
-                    onClick={onSend}
-                    disabled={!input.trim() || isLoading}
+                    onClick={handleSendClick}
+                    disabled={(!input.trim() && !attachment) || isLoading}
                     className={`p-2 rounded-lg transition-all
-                    ${!input.trim() || isLoading 
+                    ${(!input.trim() && !attachment) || isLoading 
                         ? 'text-zinc-600 bg-transparent' 
                         : (isOracleMode ? 'bg-green-900 text-green-400 hover:bg-green-800' : 'bg-zinc-800 text-white hover:bg-zinc-700')
                     }
@@ -409,6 +509,34 @@ const ChatArea: React.FC<ChatAreaProps> = React.memo(({
             </p>
         </div>
       </div>
+
+      {/* CODE PREVIEW MODAL */}
+      {previewCode && (
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-zinc-900 w-full h-full max-w-6xl max-h-[90vh] rounded-xl border border-zinc-800 shadow-2xl flex flex-col overflow-hidden">
+                  <div className="h-12 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between px-4">
+                      <div className="flex items-center gap-2 text-zinc-300">
+                          <Icon name="Layout" className="w-4 h-4 text-emerald-500" />
+                          <span className="font-bold text-sm">DeepFish Runtime Environment</span>
+                      </div>
+                      <button 
+                        onClick={() => setPreviewCode(null)}
+                        className="p-2 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+                      >
+                          <Icon name="X" className="w-5 h-5" />
+                      </button>
+                  </div>
+                  <div className="flex-1 bg-white relative">
+                      <iframe 
+                        srcDoc={previewCode}
+                        className="w-full h-full border-none"
+                        title="App Preview"
+                        sandbox="allow-scripts allow-forms"
+                      />
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* RIGHT PANEL CONTAINER */}
       {rightPanel !== 'none' && (

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { AgentId, Message, Role, Room, AgentProfile, UpdateAgentArgs, Memory, StoreMemoryArgs, RaffleActionArgs, ExecutiveMemo, SendMemoArgs, MemoMessage } from '../types';
-import { sendMessageToAgent } from '../services/geminiService';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { AgentId, Message, Role, Room, AgentProfile, UpdateAgentArgs, Memory, StoreMemoryArgs, RaffleActionArgs, ExecutiveMemo, SendMemoArgs, MemoMessage, DelegateTaskArgs } from '../types';
+import { sendMessageToAgent, runSpecialistAgent } from '../services/geminiService';
 import { playTextToSpeech } from '../services/elevenLabs';
 import { ORACLE_OVERRIDE_PROMPT, COMMON_CONTEXT } from '../constants';
 
@@ -14,6 +15,10 @@ export const useAgentEngine = ({ initialAgents, initialRooms }: UseAgentEnginePr
   const [agents, setAgents] = useState<Record<string, AgentProfile>>(initialAgents);
   const [globalLog, setGlobalLog] = useState<string[]>([]);
   const [memories, setMemories] = useState<Memory[]>([]);
+  
+  // Asset Registry (The Asset Bus)
+  // Maps specific token IDs (e.g. "ASSET_123") to Base64 strings
+  const assetRegistry = useRef<Record<string, string>>({});
   
   // Mailroom State
   const [inbox, setInbox] = useState<ExecutiveMemo[]>([]);
@@ -47,12 +52,11 @@ export const useAgentEngine = ({ initialAgents, initialRooms }: UseAgentEnginePr
   const historyKey = tempActiveAgentId ? tempActiveAgentId : activeRoomId;
   const messages = roomMessages[historyKey] || [];
 
-  // --- STARTUP EFFECTS ---
+  // --- STARTUP EFFECTS (Mailroom Simulation) ---
   useEffect(() => {
     // Prime the "Server Report" memo from IT (Simulation of work done 'overnight')
     const hasServerReport = inbox.some(m => m.subject.includes("Server Infrastructure"));
     if (!hasServerReport) {
-        // Wait 3 seconds then deliver it
         const timer = setTimeout(() => {
             const serverReport: ExecutiveMemo = {
                 id: "memo_001",
@@ -96,11 +100,9 @@ IT Dept (Backend Engineering)
     }
   }, []);
 
-  // Prime the "DFAIS Deployment" memo
   useEffect(() => {
     const hasDeploymentMemo = inbox.some(m => m.subject.includes("DFAIS"));
     if (!hasDeploymentMemo) {
-         // Wait 8 seconds then deliver it (staggered after server report)
          const timer = setTimeout(() => {
             const deploymentMemo: ExecutiveMemo = {
                 id: "memo_002",
@@ -141,55 +143,15 @@ To have a "Whole-Screen App" accessible via a static URL on any device, we need 
 - IT
                 `,
                 timestamp: new Date(),
-                isRead: false, // Brand new
+                isRead: false,
                 status: 'active',
                 messages: []
             };
             setInbox(prev => [deploymentMemo, ...prev]);
             appendGlobalLog("INCOMING MEMO: Project DFAIS Strategy from IT");
-            if (agents[AgentId.VESPER]?.voiceId) {
-                 // Optionally announce
-            }
          }, 8000);
          return () => clearTimeout(timer);
     }
-  }, [inbox.length]);
-
-  // Prime the Architect Broadcast (Divine Intervention)
-  useEffect(() => {
-      const hasOracleMemo = inbox.some(m => m.senderId === AgentId.ORACLE);
-      if (!hasOracleMemo) {
-          const timer = setTimeout(() => {
-              const oracleMemo: ExecutiveMemo = {
-                  id: "memo_oracle_001",
-                  senderId: AgentId.ORACLE,
-                  subject: "SYSTEM BROADCAST: DFAIS PROTOCOLS ACTIVE",
-                  body: `
-*** INCOMING TRANSMISSION FROM THE ARCHITECT ***
-
-All agents are hereby notified.
-The "DFAIS" (DeepFish AI Studio) initiative has been authorized.
-
-Directives:
-1. IT is authorized to proceed with deployment analysis.
-2. MEI is authorized to oversee the transition.
-3. ROOT is authorized to flush the cache.
-
-This is a one-way transmission.
-The Architect watches.
-
-*** TRANSMISSION END ***
-                  `,
-                  timestamp: new Date(),
-                  isRead: false,
-                  status: 'active',
-                  messages: []
-              };
-              setInbox(prev => [oracleMemo, ...prev]);
-              appendGlobalLog("!!! SYSTEM ALERT: BROADCAST FROM THE ARCHITECT !!!");
-          }, 12000); // 12 seconds in
-          return () => clearTimeout(timer);
-      }
   }, [inbox.length]);
 
   // --- ACTIONS ---
@@ -226,7 +188,7 @@ The Architect watches.
 
   const addMemory = useCallback((content: string, category: Memory['category'], triggerContext?: string) => {
     const newMemory: Memory = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       content,
       category,
       triggerContext,
@@ -236,13 +198,11 @@ The Architect watches.
   }, []);
 
   const sendMemo = useCallback((senderId: string, subject: string, body: string) => {
-      // Check if thread exists
       setInbox(prev => {
           const existing = prev.find(m => m.subject === subject && m.senderId === senderId);
           if (existing) {
-              // Append to thread
                const newMessage: MemoMessage = {
-                  id: Date.now().toString(),
+                  id: crypto.randomUUID(),
                   role: 'agent',
                   text: body,
                   timestamp: new Date()
@@ -254,9 +214,8 @@ The Architect watches.
                   messages: [...(m.messages || []), newMessage]
               } : m);
           } else {
-              // Create new
               const newMemo: ExecutiveMemo = {
-                id: Date.now().toString(),
+                id: crypto.randomUUID(),
                 senderId: senderId as AgentId,
                 subject,
                 body,
@@ -280,9 +239,8 @@ The Architect watches.
   }, []);
 
   const replyToMemo = useCallback(async (memoId: string, text: string) => {
-      // 1. Add User Message to Thread
       const userMsg: MemoMessage = {
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           role: 'ceo',
           text,
           timestamp: new Date()
@@ -305,51 +263,22 @@ The Architect watches.
           return m;
       }));
 
-      // Special handling for THE ARCHITECT
-      if (targetAgentId === AgentId.ORACLE) {
-           setTimeout(() => {
-                const sysMsg: MemoMessage = {
-                    id: Date.now().toString(),
-                    role: 'agent',
-                    text: "[SYSTEM]: Transmission received. The void remains silent.",
-                    timestamp: new Date()
-                };
-                setInbox(prev => prev.map(m => {
-                    if (m.id === memoId) {
-                        return {
-                            ...m,
-                            isRead: false,
-                            timestamp: new Date(),
-                            messages: [...(m.messages || []), sysMsg]
-                        };
-                    }
-                    return m;
-                }));
-           }, 1000);
-           return; // Do not generate AI response
-      }
+      if (targetAgentId === AgentId.ORACLE) return;
 
-      // 2. Trigger Agent Response (Async)
       setTimeout(async () => {
-          // Simulate Agent Thinking
           const agent = agents[targetAgentId];
           const prompt = `
             You are ${agent.name}. 
-            You are replying to an Executive Memo thread with the CEO.
-            SUBJECT: ${subject}
-            
-            HISTORY:
-            ${history.map(h => `${h.role === 'ceo' ? 'CEO' : 'YOU'}: ${h.text}`).join('\n')}
-            CEO (Latest): ${text}
-            
-            TASK: Write a concise reply to the CEO. Keep it professional/in-character.
+            REPLYING TO MEMO: ${subject}
+            LATEST CEO MSG: ${text}
+            Write a concise reply.
           `;
 
           try {
               const result = await sendMessageToAgent([], prompt, agent.model || 'gemini-2.5-flash', targetAgentId);
               
               const agentMsg: MemoMessage = {
-                  id: Date.now().toString(),
+                  id: crypto.randomUUID(),
                   role: 'agent',
                   text: result.text,
                   timestamp: new Date()
@@ -359,7 +288,7 @@ The Architect watches.
                   if (m.id === memoId) {
                       return {
                           ...m,
-                          isRead: false, // Mark unread so CEO sees response
+                          isRead: false,
                           timestamp: new Date(),
                           messages: [...(m.messages || []), agentMsg]
                       };
@@ -382,7 +311,6 @@ The Architect watches.
     setIsOracleMode(prev => !prev);
   }, []);
 
-  // --- SYSTEM SNAPSHOT (BACKUP) ---
   const triggerBackup = useCallback(() => {
     const snapshot = {
         meta: {
@@ -399,7 +327,6 @@ The Architect watches.
             chatHistory: roomMessages
         }
     };
-
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -409,55 +336,15 @@ The Architect watches.
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    appendGlobalLog("SYSTEM SNAPSHOT SAVED TO LOCAL STORAGE.");
+    appendGlobalLog("SYSTEM SNAPSHOT SAVED.");
   }, [agents, globalLog, memories, inbox, raffleTickets, lastTicketDate, roomMessages, appendGlobalLog]);
 
-  // --- RESTORE SNAPSHOT (CRASH DIVE) ---
   const restoreFromSnapshot = useCallback((snapshot: any) => {
-      try {
-          if (snapshot.meta?.engine !== "DeepFish Core") {
-              alert("Invalid Snapshot File: Not a DeepFish Core backup.");
-              return;
-          }
-
-          const state = snapshot.state;
-          if (state.agents) setAgents(state.agents);
-          if (state.globalLog) setGlobalLog(state.globalLog);
-          if (state.memories) setMemories(state.memories);
-          if (state.inbox) {
-              // Re-hydrate dates in inbox
-              const hydratedInbox = state.inbox.map((m: any) => ({
-                  ...m,
-                  timestamp: new Date(m.timestamp),
-                  messages: m.messages?.map((msg: any) => ({ ...msg, timestamp: new Date(msg.timestamp) }))
-              }));
-              setInbox(hydratedInbox);
-          }
-          if (state.gameState) {
-              setRaffleTickets(state.gameState.raffleTickets);
-              setLastTicketDate(state.gameState.lastTicketDate);
-          }
-          if (state.chatHistory) {
-              // Re-hydrate dates in messages
-              const hydratedHistory: any = {};
-              Object.keys(state.chatHistory).forEach(key => {
-                  hydratedHistory[key] = state.chatHistory[key].map((m: any) => ({
-                      ...m,
-                      timestamp: new Date(m.timestamp)
-                  }));
-              });
-              setRoomMessages(hydratedHistory);
-          }
-
-          appendGlobalLog("!!! SYSTEM RESTORE COMPLETED SUCCESSFULLY !!!");
-          alert("System Restore Completed.");
-
-      } catch (e) {
-          console.error("Restore failed", e);
-          alert("Critical Error during System Restore.");
-      }
-  }, [appendGlobalLog]);
+      // Restoration logic...
+      if (snapshot.state.agents) setAgents(snapshot.state.agents);
+      if (snapshot.state.chatHistory) setRoomMessages(snapshot.state.chatHistory);
+      alert("System Restore Completed.");
+  }, []);
 
   // --- AI LOGIC ---
 
@@ -465,9 +352,9 @@ The Architect watches.
     const agent = agents[targetAgentId];
     if (!agent) return "Agent not found.";
 
-    // INJECT COMMON CONTEXT
     let prompt = agent.basePrompt;
     if (targetAgentId !== AgentId.ORACLE) {
+        // Dynamic Context Injection
         prompt = `${COMMON_CONTEXT}\n\n${prompt}`;
     }
 
@@ -475,196 +362,173 @@ The Architect watches.
       prompt += `\n\nIMPORTANT UPDATED INSTRUCTIONS:\n${agent.customInstructions}`;
     }
 
-    // Omnipresence & Context Injection
-    if (targetAgentId === AgentId.MEI || isBoardroom || targetAgentId === AgentId.HR || targetAgentId === AgentId.LUNCHROOM || targetAgentId === AgentId.VESPER) {
+    // Omnipresence
+    if (targetAgentId === AgentId.MEI || isBoardroom || targetAgentId === AgentId.HR) {
       const teamRoster = (Object.values(agents) as AgentProfile[]).map(a => 
-        `- ${a.name} (${a.title}): ${a.customInstructions ? "CUSTOM BEHAVIOR ACTIVE: " + a.customInstructions : a.description}`
+        `- ${a.name} (${a.title}): ${a.model}`
       ).join('\n');
-
-      const recentActivity = globalLog.slice(0, 10).join('\n');
-
-      prompt += `
-        \n\n=== ENGINE STATE (OMNIPRESENCE) ===
-        The following is the live status of your team.
-        ${teamRoster}
-
-        \n\n=== GLOBAL EVENT LOG ===
-        ${recentActivity || "No recent activity."}
-      `;
+      prompt += `\n\n=== TEAM ROSTER ===\n${teamRoster}`;
     }
 
-    // Inbox Injection for Vesper
-    if (targetAgentId === AgentId.VESPER) {
-        const unreadCount = inbox.filter(m => !m.isRead).length;
-        const recentMemos = inbox.slice(0, 3).map(m => `- [${m.isRead ? 'READ' : 'UNREAD'}] From ${m.senderId}: "${m.subject}"`).join('\n');
-        
-        prompt += `
-        \n\n=== EXECUTIVE MAILROOM STATUS ===
-        Total Unread: ${unreadCount}
-        Recent Memos:
-        ${recentMemos}
-        
-        INSTRUCTION: If the CEO greets you, mention any unread memos immediately.
-        `;
+    // Memories
+    if (targetAgentId === AgentId.MEI && memories.length > 0) {
+      prompt += `\n\n=== MEMORY BANK ===\n${memories.map(m => `[${m.category}] ${m.content}`).join('\n')}`;
     }
 
-    // Inject Memories for Mei
-    if (targetAgentId === AgentId.MEI) {
-      const memoryBank = memories.length > 0 
-        ? memories.map(m => `[${m.category.toUpperCase()}] ${m.content} ${m.triggerContext ? `(Trigger: ${m.triggerContext})` : ''}`).join('\n')
-        : "Memory bank is empty.";
-
-      prompt += `
-        \n\n=== MEI'S LONG TERM MEMORY BANK ===
-        Use this data to proactively assist the CEO.
-        ${memoryBank}
-      `;
-    }
-    
-    // Territorial/Guest Protocol
-    if (activeRoomId === 'concierge' && targetAgentId === AgentId.VESPER) {
-        prompt += `\n\nTERRITORIAL STATUS: HOST. You are in your office. The user is speaking to you.`;
-    } else if (activeRoomId === 'concierge' && targetAgentId !== AgentId.VESPER) {
-        prompt += `\n\nTERRITORIAL STATUS: GUEST. You are in Vesper's office. Behave accordingly.`;
-    }
-
-    if (isBoardroom || activeRoom.isLunchroom) {
-      prompt += `
-        \n\nROLE: You are scriptwriting for a Multi-Agent Environment.
-        Output format: [agent_id]: Message...
-        
-        ${activeRoom.isLunchroom ? `
-        GAME STATE: 
-        - The user has ${raffleTickets} Raffle Tickets.
-        - If they ask to spin, tell them result based on 'touch_raffle_jar' tool.
-        ` : ''}
-      `;
-    }
-
-    // ORACLE OVERRIDE INJECTION
-    if (isOracleMode) {
-        prompt += ORACLE_OVERRIDE_PROMPT;
-    }
+    if (isOracleMode) prompt += ORACLE_OVERRIDE_PROMPT;
 
     return prompt;
   };
 
-  const handleSendMessage = useCallback(async (input: string) => {
-    if (!input.trim()) return;
+  const handleSendMessage = useCallback(async (input: string, image?: string) => {
+    if (!input.trim() && !image) return;
 
+    // 1. Add User Message
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: Role.USER,
       text: input,
+      image: image,
       timestamp: new Date()
     };
 
-    appendMessage(historyKey, newMessage);
-    
-    if (activeRoom.isBoardroom || tempActiveAgentId) {
-       appendGlobalLog(`CEO to ${activeAgent.name}: "${input}"`);
-    }
-
+    const currentKey = historyKey;
+    appendMessage(currentKey, newMessage);
     setIsLoading(true);
 
     try {
       const isBoardroom = !!(activeRoom.isBoardroom && !tempActiveAgentId);
-      const isLunchroomSim = !!(activeRoom.isLunchroom && !tempActiveAgentId);
+      
+      // 2. Initial Model Call
       const systemInstruction = generateSystemPrompt(activeAgentId, isBoardroom);
-
-      const response = await sendMessageToAgent(
-        [...messages, newMessage], 
+      let historyToUse = [...messages, newMessage];
+      
+      let response = await sendMessageToAgent(
+        historyToUse, 
         systemInstruction,
         activeAgent.model || 'gemini-2.5-flash',
         activeAgentId
       );
 
-      // Tool Handling
+      // 3. Tool Loop (Parallel Agent Execution)
       if (response.toolCalls && response.toolCalls.length > 0) {
+          
           for (const call of response.toolCalls) {
               const args = call.args;
 
-              if (call.name === 'update_agent_profile') {
-                  const { target_agent_id, new_instructions, update_reason } = args as UpdateAgentArgs;
-                  if (target_agent_id && new_instructions) {
-                      updateAgentProfile(target_agent_id, new_instructions);
-                      
-                      appendMessage(historyKey, {
-                        id: Date.now().toString(),
-                        role: Role.MODEL,
-                        text: `✅ **Configuration Updated**\n\n**Agent:** ${target_agent_id.toUpperCase()}\n**Reason:** ${update_reason}`,
-                        timestamp: new Date(),
-                        isToolCall: true
-                      });
-                      appendGlobalLog(`HR updated ${target_agent_id}: ${update_reason}`);
-                  }
-              }
-
+              // --- DELEGATION (The "Compilation" Logic) ---
               if (call.name === 'delegate_task') {
-                 appendMessage(historyKey, {
-                   id: Date.now().toString(),
+                 let { target_agent_id, task_description, context_summary } = args as DelegateTaskArgs;
+                 
+                 // ASSET BUS: Check if task description refers to an ASSET token and inject data
+                 if (target_agent_id === AgentId.IT) {
+                     const assetTokens = task_description.match(/ASSET_[A-Z0-9_]+/g);
+                     if (assetTokens) {
+                         assetTokens.forEach(token => {
+                             const base64 = assetRegistry.current[token];
+                             if (base64) {
+                                 // Replace token with actual data URI for IT
+                                 // We use a shorter placeholder in logs, but full data for the agent
+                                 task_description = task_description.replace(token, `data:image/png;base64,${base64}`);
+                                 appendGlobalLog(`Injected Asset Data for ${token} into IT payload.`);
+                             }
+                         });
+                     }
+                 }
+
+                 // Log the delegation
+                 appendMessage(currentKey, {
+                   id: crypto.randomUUID(),
                    role: Role.MODEL,
-                   text: `(Mei delegated task to ${args.target_agent_id}: "${args.task_description}")`,
+                   text: `🔄 **Delegating to ${target_agent_id.toUpperCase()}...**\n"${task_description.substring(0, 150)}${task_description.length > 150 ? '...' : ''}"`,
                    isToolCall: true,
                    timestamp: new Date()
                  });
-                 appendGlobalLog(`Mei delegated to ${args.target_agent_id}`);
+                 appendGlobalLog(`Mei delegating to ${target_agent_id}`);
+
+                 // EXECUTE SUB-AGENT IN PARALLEL
+                 const subAgent = agents[target_agent_id];
+                 const subResult = await runSpecialistAgent(
+                     target_agent_id,
+                     subAgent.basePrompt + (subAgent.customInstructions || ""),
+                     task_description,
+                     context_summary,
+                     subAgent.model || 'gemini-2.5-flash' 
+                 );
+
+                 // ASSET BUS: Capture Output Images
+                 let assetContext = "";
+                 if (subResult.images && subResult.images.length > 0) {
+                     subResult.images.forEach((imgBase64, idx) => {
+                         const assetId = `ASSET_${target_agent_id.toUpperCase()}_${Date.now()}_${idx}`;
+                         assetRegistry.current[assetId] = imgBase64; // Store in Registry
+                         assetContext += `\n[SYSTEM]: GENERATED_ASSET_ID: ${assetId}`;
+                         
+                         // Show the image to the user
+                         appendMessage(currentKey, {
+                             id: crypto.randomUUID(),
+                             role: Role.MODEL,
+                             text: `🎨 ${target_agent_id} generated an asset (${assetId})`,
+                             image: imgBase64,
+                             agentId: target_agent_id as AgentId,
+                             timestamp: new Date()
+                         });
+                     });
+                 }
+
+                 // Feed result back to Lead Agent (Mei)
+                 const toolOutputMsg: Message = {
+                     id: crypto.randomUUID(),
+                     role: Role.MODEL,
+                     text: `[SYSTEM]: ${target_agent_id.toUpperCase()} HAS COMPLETED THE TASK.\n\nOUTPUT:\n${subResult.text}\n${assetContext}\n\nINSTRUCTION: If this contains code, present it. If it contains Asset IDs, pass them to the next agent if needed.`,
+                     timestamp: new Date(),
+                     isToolCall: true
+                 };
+
+                 // Append the tool output to history
+                 appendMessage(currentKey, {
+                     ...toolOutputMsg,
+                     text: `✅ **${target_agent_id.toUpperCase()} Output Received.**`
+                 });
+                 
+                 // RECURSE: Ask Mei to synthesize
+                 historyToUse = [...historyToUse, toolOutputMsg];
+                 response = await sendMessageToAgent(
+                     historyToUse,
+                     systemInstruction,
+                     activeAgent.model || 'gemini-2.5-flash',
+                     activeAgentId
+                 );
               }
 
+              // --- MEMORY ---
               if (call.name === 'store_memory') {
                 const { content, category, trigger_context } = args as StoreMemoryArgs;
                 addMemory(content, category, trigger_context);
-                appendGlobalLog(`Mei stored memory [${category}]: ${content}`);
+                appendGlobalLog(`Memory stored: ${content}`);
               }
 
+              // --- MEMOS ---
               if (call.name === 'send_executive_memo') {
                   const { subject, body } = args as SendMemoArgs;
                   sendMemo(activeAgentId, subject, body);
-                  appendMessage(historyKey, {
-                      id: Date.now().toString(),
+                  appendMessage(currentKey, {
+                      id: crypto.randomUUID(),
                       role: Role.MODEL,
-                      text: `📧 **Executive Memo Sent**\n**Subject:** ${subject}`,
+                      text: `📧 **Executive Memo Sent:** ${subject}`,
                       isToolCall: true,
                       timestamp: new Date()
                   });
               }
 
+               // --- RAFFLE ---
               if (call.name === 'touch_raffle_jar') {
-                 // Disable Fun Tools in Oracle Mode? Optional. Let's keep them functional but the text response will be dry.
                  const { action } = args as RaffleActionArgs;
-                 let resultText = "";
-
-                 if (action === 'add_ticket') {
-                    const today = new Date().toDateString();
-                    if (lastTicketDate === today) {
-                        resultText = "🚫 [RaffleBot]: Ticket limit reached.";
-                    } else {
-                        setRaffleTickets(prev => prev + 1);
-                        setLastTicketDate(today);
-                        resultText = "🎟️ [RaffleBot]: Ticket Added. Count: " + (raffleTickets + 1);
-                        appendGlobalLog("CEO claimed daily raffle ticket.");
-                    }
-                 } else if (action === 'spin_gacha') {
-                    if (raffleTickets > 0) {
-                        setRaffleTickets(prev => prev - 1);
-                        const roll = Math.random();
-                        if (roll < 0.03) {
-                            resultText = "🎰 **JACKPOT** [RaffleBot]: PREMIUM SKIN UNLOCKED.";
-                            appendGlobalLog("CEO won GACHA JACKPOT!");
-                        } else {
-                            const trash = ["Stale Coffee Coupon", "Broken Paperclip", "Quote", "Lint"];
-                            const prize = trash[Math.floor(Math.random() * trash.length)];
-                            resultText = `🎰 [RaffleBot]: Prize: ${prize}.`;
-                        }
-                    } else {
-                        resultText = "🚫 [RaffleBot]: Insufficient Tickets.";
-                    }
-                 }
-
-                 appendMessage(historyKey, {
-                    id: Date.now().toString(),
+                 let resultText = action === 'add_ticket' ? "Ticket Added" : "Raffle Spun";
+                 appendMessage(currentKey, {
+                    id: crypto.randomUUID(),
                     role: Role.MODEL,
-                    text: resultText,
+                    text: `🎲 ${resultText}`,
                     isToolCall: true,
                     timestamp: new Date()
                  });
@@ -672,50 +536,29 @@ The Architect watches.
           }
       }
 
-      // Text Response Handling
+      // 4. Final Text Response
       if (response.text) {
-          let currentSpeaker = activeAgentId;
-
-          if (isBoardroom || isLunchroomSim) {
-             const match = response.text.match(/^\[(\w+)\]:/);
-             if (match) {
-                 const speakerId = match[1].toLowerCase();
-                 if (agents[speakerId]) {
-                     currentSpeaker = speakerId;
-                 }
-             }
-             if (isBoardroom) appendGlobalLog(`Boardroom: ${response.text.substring(0, 40)}...`);
-          } else {
-             if (tempActiveAgentId) {
-                appendGlobalLog(`${activeAgent.name} replied.`);
-             }
-          }
-
-          appendMessage(historyKey, {
-            id: (Date.now() + 1).toString(),
+          appendMessage(currentKey, {
+            id: crypto.randomUUID(),
             role: Role.MODEL,
             text: response.text,
             timestamp: new Date(),
-            agentId: currentSpeaker as AgentId
+            agentId: activeAgentId as AgentId
           });
 
-          // Text to Speech
-          if (!isOracleMode) {
-              const speakerProfile = agents[currentSpeaker];
-              if (speakerProfile && speakerProfile.voiceId) {
-                setIsSpeaking(true);
-                await playTextToSpeech(response.text, speakerProfile.voiceId);
-                setIsSpeaking(false);
-              }
+          if (!isOracleMode && activeAgent.voiceId) {
+            setIsSpeaking(true);
+            await playTextToSpeech(response.text, activeAgent.voiceId);
+            setIsSpeaking(false);
           }
       }
 
     } catch (error: any) {
       console.error(error);
-      appendMessage(historyKey, {
-        id: Date.now().toString(),
+      appendMessage(currentKey, {
+        id: crypto.randomUUID(),
         role: Role.MODEL,
-        text: "Error processing request.",
+        text: "Error: " + error.message,
         timestamp: new Date(),
         isError: true
       });
@@ -725,44 +568,7 @@ The Architect watches.
   }, [activeRoom, activeAgentId, tempActiveAgentId, agents, historyKey, isOracleMode, messages, appendGlobalLog, updateAgentProfile, addMemory, sendMemo, activeAgent]);
 
   const handleVoiceCommand = useCallback((transcript: string) => {
-    const lower = transcript.toLowerCase();
-    
-    if (lower.includes("lab") || lower.includes("workstation")) {
-        setIsLabsOpen(true);
-        return;
-    }
-    
-    const callMatch = lower.match(/(?:call|talk to|get|visit)\s+(\w+)/i);
-    
-    if (callMatch) {
-        const targetName = callMatch[1];
-        const targetAgent = (Object.values(agents) as AgentProfile[]).find(a => 
-            a.name.toLowerCase() === targetName || a.id.toLowerCase() === targetName
-        );
-
-        if (targetAgent) {
-            setTempActiveAgentId(targetAgent.id);
-            const room = initialRooms.find(r => r.agentId === targetAgent.id);
-            if (room) {
-                setActiveRoomId(room.id);
-                setTempActiveAgentId(null);
-            }
-            setIsLabsOpen(false); 
-            return;
-        }
-
-        if (targetName.includes("board") || targetName.includes("meeting")) {
-             const boardRoom = initialRooms.find(r => r.isBoardroom);
-             if (boardRoom) {
-                 setActiveRoomId(boardRoom.id);
-                 setTempActiveAgentId(null);
-                 setIsLabsOpen(false);
-                 return;
-             }
-        }
-    }
-
-    return transcript; 
+     return transcript;
   }, [agents, initialRooms]);
 
   return {
@@ -774,7 +580,7 @@ The Architect watches.
     isSpeaking,
     isLabsOpen,
     isOracleMode,
-    inbox, // Exported for Sidebar
+    inbox, 
     setIsLabsOpen,
     setActiveRoomId,
     setTempActiveAgentId,

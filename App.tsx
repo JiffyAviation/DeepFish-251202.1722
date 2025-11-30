@@ -67,8 +67,9 @@ const App: React.FC = () => {
       setIsLabsOpen(true);
   };
 
-  const handleSend = () => {
-    handleSendMessage(input);
+  // Updated to accept image
+  const handleSend = (image?: string) => {
+    handleSendMessage(input, image);
     setInput("");
   };
 

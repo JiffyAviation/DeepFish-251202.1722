@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 import { Message, Role, AgentId } from "../types";
 
@@ -9,7 +7,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const DELEGATE_TOOL: FunctionDeclaration = {
   name: 'delegate_task',
-  description: 'Delegate a specific task to a specialized agent (Skillz, Creative, Slash, etc).',
+  description: 'Delegate a specific task to a specialized agent (Skillz, Creative, Slash, etc). Use this for coding, design generation, or complex logic.',
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -20,11 +18,11 @@ const DELEGATE_TOOL: FunctionDeclaration = {
       },
       task_description: {
         type: Type.STRING,
-        description: 'The specific instruction for the specialist agent.'
+        description: 'The detailed instruction for the specialist. For IT, include stack details. For Creative, include visual style.'
       },
       context_summary: {
         type: Type.STRING,
-        description: 'A brief summary of the project context.'
+        description: 'A brief summary of what the user wants, so the sub-agent has context.'
       }
     },
     required: ['target_agent_id', 'task_description']
@@ -119,6 +117,11 @@ export interface AgentResponse {
   toolCalls?: any[];
 }
 
+export interface SpecialistResponse {
+  text: string;
+  images?: string[];
+}
+
 // Map of allowed tools per agent ID
 // NOTE: IT, Mei, HR, MCP, Skillz can all send memos
 const AGENT_TOOLS: Record<string, FunctionDeclaration[]> = {
@@ -156,9 +159,6 @@ export const sendMessageToAgent = async (
     // Also inject SEND_MEMO_TOOL for everyone in Boardroom to allow reports
     if (AGENT_TOOLS[agentId]) {
       config.tools = [{ functionDeclarations: AGENT_TOOLS[agentId] }];
-    } else {
-        // Fallback: everyone can send memos? Let's restrict it for now to the list above.
-        // Or if we want dynamic, we check the list.
     }
 
     const chat = ai.chats.create({
@@ -168,6 +168,12 @@ export const sendMessageToAgent = async (
     });
 
     const lastMessage = history[history.length - 1];
+    
+    // Safety check for empty message
+    if (!lastMessage || !lastMessage.text) {
+        return { text: "...", toolCalls: [] };
+    }
+
     const result = await chat.sendMessage({ message: lastMessage.text });
     
     // Check for tool calls
@@ -190,22 +196,33 @@ export const sendMessageToAgent = async (
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+    // If it's a 503 or overload, generic message
+    if (error.message?.includes('503')) {
+        throw new Error("Neural overload. Please retry.");
+    }
     throw new Error(error.message || "Agent communication failed.");
   }
 };
 
 // Function to run a specialist agent (Stateless, single turn usually)
+// This enables the "Parallel Agentic Strings"
 export const runSpecialistAgent = async (
   agentId: string,
   systemInstruction: string,
   taskDescription: string,
   contextSummary: string,
   modelName: string
-): Promise<string> => {
+): Promise<SpecialistResponse> => {
   const prompt = `
+    [INTERNAL SUB-AGENT REQUEST]
     CONTEXT SUMMARY: ${contextSummary}
     
     YOUR TASK: ${taskDescription}
+    
+    OUTPUT REQUIREMENT:
+    - If writing code, output ONLY valid code blocks.
+    - If designing, be vivid.
+    - Be concise. The output goes back to the Lead Agent (Mei).
   `;
 
   try {
@@ -215,8 +232,25 @@ export const runSpecialistAgent = async (
       contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
-    return response.text || "(No output generated)";
+    // Check for inline images (e.g. from gemini-2.5-flash-image)
+    let images: string[] = [];
+    if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                images.push(part.inlineData.data);
+            }
+        }
+    }
+
+    return { 
+        text: response.text || "(No output generated)",
+        images: images
+    };
+
   } catch (e: any) {
-    return `[Agent Error]: ${e.message}`;
+    return {
+        text: `[Agent Error - ${agentId}]: ${e.message}`,
+        images: []
+    };
   }
 };
