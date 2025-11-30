@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 import { Message, Role, AgentId } from "../types";
 
@@ -15,7 +16,7 @@ const DELEGATE_TOOL: FunctionDeclaration = {
       target_agent_id: {
         type: Type.STRING,
         description: 'The ID of the agent to call.',
-        enum: ['skillz', 'slash', 'creative', 'qc', 'shipping', 'call_center', 'it', 'hr', 'social']
+        enum: ['skillz', 'slash', 'creative', 'mcp', 'qc', 'subs', 'shipping', 'call_center', 'it', 'hr', 'social']
       },
       task_description: {
         type: Type.STRING,
@@ -39,7 +40,7 @@ const UPDATE_AGENT_TOOL: FunctionDeclaration = {
       target_agent_id: {
         type: Type.STRING,
         description: 'The ID of the agent to modify.',
-        enum: ['mei', 'skillz', 'slash', 'creative', 'qc', 'shipping', 'call_center', 'it', 'social', 'vesper']
+        enum: ['mei', 'skillz', 'slash', 'creative', 'mcp', 'qc', 'subs', 'shipping', 'call_center', 'it', 'abacus', 'social', 'vesper']
       },
       new_instructions: {
         type: Type.STRING,
@@ -78,9 +79,25 @@ const STORE_MEMORY_TOOL: FunctionDeclaration = {
   }
 };
 
+const TOUCH_RAFFLE_TOOL: FunctionDeclaration = {
+  name: 'touch_raffle_jar',
+  description: 'Lunchroom Tool: Interact with the Gacha Raffle Jar.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        enum: ['add_ticket', 'spin_gacha'],
+        description: 'Action to perform: add_ticket (daily login) or spin_gacha (spend ticket for prize).'
+      }
+    },
+    required: ['action']
+  }
+};
+
 const SEND_MEMO_TOOL: FunctionDeclaration = {
   name: 'send_executive_memo',
-  description: 'Send a formal Memo/Email to the CEO. It will appear in their Inbox.',
+  description: 'Send a formal Memo/Email to the CEO. It will appear in their Inbox at Vesper\'s Desk.',
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -103,12 +120,16 @@ export interface AgentResponse {
 }
 
 // Map of allowed tools per agent ID
+// NOTE: IT, Mei, HR, MCP, Skillz can all send memos
 const AGENT_TOOLS: Record<string, FunctionDeclaration[]> = {
   [AgentId.MEI]: [DELEGATE_TOOL, STORE_MEMORY_TOOL, SEND_MEMO_TOOL],
   [AgentId.HR]: [UPDATE_AGENT_TOOL, SEND_MEMO_TOOL],
+  [AgentId.LUNCHROOM]: [TOUCH_RAFFLE_TOOL],
   [AgentId.IT]: [SEND_MEMO_TOOL],
+  [AgentId.MCP]: [SEND_MEMO_TOOL],
   [AgentId.SKILLZ]: [SEND_MEMO_TOOL],
-  [AgentId.VESPER]: [SEND_MEMO_TOOL]
+  [AgentId.VESPER]: [SEND_MEMO_TOOL], // Vesper can send memos too
+  [AgentId.ROOT]: [] // Root doesn't use tools, he IS the tool
 };
 
 export const sendMessageToAgent = async (
@@ -131,8 +152,13 @@ export const sendMessageToAgent = async (
       temperature: 0.7,
     };
 
+    // Dynamically inject tools based on who is speaking
+    // Also inject SEND_MEMO_TOOL for everyone in Boardroom to allow reports
     if (AGENT_TOOLS[agentId]) {
       config.tools = [{ functionDeclarations: AGENT_TOOLS[agentId] }];
+    } else {
+        // Fallback: everyone can send memos? Let's restrict it for now to the list above.
+        // Or if we want dynamic, we check the list.
     }
 
     const chat = ai.chats.create({
@@ -144,8 +170,10 @@ export const sendMessageToAgent = async (
     const lastMessage = history[history.length - 1];
     const result = await chat.sendMessage({ message: lastMessage.text });
     
+    // Check for tool calls
     const toolCalls = result.functionCalls;
 
+    // Check for inline images (Hanna/Creative)
     let base64Image: string | undefined = undefined;
     if (result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts) {
         for (const part of result.candidates[0].content.parts) {
@@ -166,6 +194,7 @@ export const sendMessageToAgent = async (
   }
 };
 
+// Function to run a specialist agent (Stateless, single turn usually)
 export const runSpecialistAgent = async (
   agentId: string,
   systemInstruction: string,

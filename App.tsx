@@ -1,39 +1,45 @@
+
+
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import { Labs } from './components/Labs';
-import { AGENTS } from './constants';
+import { ROOMS, INITIAL_AGENTS } from './constants';
 import { useAgentEngine } from './hooks/useAgentEngine';
 
 const App: React.FC = () => {
+  // Use The Engine
   const {
     agents,
-    activeParticipantIds,
-    activeAgents,
+    activeRoom,
+    activeAgent,
     messages,
     isLoading,
     isSpeaking,
     isLabsOpen,
-    inbox,
-    agentToEdit,
+    isOracleMode,
+    inbox, // Get inbox
     setIsLabsOpen,
-    toggleAgentSelection,
+    setActiveRoomId,
+    setTempActiveAgentId,
     handleSendMessage,
     handleVoiceCommand,
     createNewAgent,
-    editAgent,
-    openLabsForNew,
+    toggleOracleMode,
     triggerBackup,
-    restoreFromSnapshot,
+    restoreFromSnapshot, // Added restore function
     markMemoAsRead,
     replyToMemo,
     setMemoStatus
-  } = useAgentEngine({ initialAgents: AGENTS });
+  } = useAgentEngine({ initialAgents: INITIAL_AGENTS, initialRooms: ROOMS });
 
+  // Local input state for the UI
   const [input, setInput] = useState("");
 
-  const handleToggleAgent = (id: string) => {
-    toggleAgentSelection(id);
+  const onSelectRoom = (id: string) => {
+    setActiveRoomId(id);
+    setTempActiveAgentId(null);
+    setIsLabsOpen(false);
   };
 
   const handleSend = () => {
@@ -52,22 +58,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRestoreFile = (file: File) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-          try {
-              if (event.target && typeof event.target.result === 'string') {
-                  const json = JSON.parse(event.target.result);
-                  restoreFromSnapshot(json);
-              }
-          } catch (e) {
-              console.error("Failed to parse backup file", e);
-              alert("Error parsing backup file.");
-          }
-      };
-      reader.readAsText(file);
-  };
-
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
@@ -80,54 +70,60 @@ const App: React.FC = () => {
     }
   };
 
+  // Calculate unread memos
+  const unreadCount = inbox ? inbox.filter(m => !m.isRead && m.status !== 'deleted' && m.status !== 'archived').length : 0;
+
   return (
-    <div className="flex h-screen w-full overflow-hidden transition-colors duration-500 bg-zinc-950 text-zinc-200">
+    <div className={`flex h-screen w-full overflow-hidden transition-colors duration-500
+        ${isOracleMode ? 'bg-black text-green-500' : 'bg-zinc-950 text-zinc-200'}
+    `}>
       
-      {/* Left Agent Selector */}
       <Sidebar 
-        activeParticipantIds={activeParticipantIds}
-        onToggleAgent={handleToggleAgent}
-        onSelectAgent={() => {}} 
+        activeRoomId={activeRoom.isBoardroom ? 'boardroom' : activeRoom.id}
+        onSelectRoom={onSelectRoom}
+        onOpenLabs={() => setIsLabsOpen(true)}
         isLabsOpen={isLabsOpen}
-        agents={agents}
-        onEditAgent={editAgent}
+        onToggleOracleMode={toggleOracleMode}
+        isOracleMode={isOracleMode}
         onBackup={triggerBackup}
-        onRestore={handleRestoreFile}
+        onRestore={restoreFromSnapshot}
+        onToggleFullscreen={toggleFullscreen}
+        inboxCount={unreadCount}
       />
 
       {/* Main Content Router */}
       <div className="flex-1 flex flex-col relative">
         {isLabsOpen ? (
-          <Labs agents={agents} onCreateAgent={createNewAgent} agentToEdit={agentToEdit} />
+          <Labs agents={agents} onCreateAgent={createNewAgent} />
         ) : (
           <ChatArea 
             messages={messages}
-            activeAgents={activeAgents}
-            allAgents={agents}
+            activeAgent={activeAgent}
             input={input}
             setInput={setInput}
             onSend={handleSend}
             isLoading={isLoading}
+            roomName={activeAgent.id === activeRoom.agentId ? activeRoom.name : `Call with ${activeAgent.name}`}
+            themeColor={activeRoom.themeColor}
             onSpeechResult={handleVoiceWrapper}
             isSpeaking={isSpeaking}
+            isOracleMode={isOracleMode}
             inbox={inbox}
             onMarkMemoRead={markMemoAsRead}
             onReplyToMemo={replyToMemo}
             onSetMemoStatus={setMemoStatus}
-            onEditAgent={editAgent}
-            onOpenLabs={openLabsForNew}
-            onBackup={triggerBackup}
-            onRestore={restoreFromSnapshot}
-            onToggleFullscreen={toggleFullscreen}
           />
         )}
         
-        <div className="absolute top-4 right-4 z-50 pointer-events-none mix-blend-difference">
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800/50 bg-black/20 backdrop-blur-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest">DeepFish OS</span>
-          </div>
-        </div>
+        {/* Visual Indicator of Mei's Presence */}
+        {!isOracleMode && (
+            <div className="absolute top-4 right-4 z-50 pointer-events-none">
+            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-zinc-800">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase">Mei Online</span>
+            </div>
+            </div>
+        )}
       </div>
     </div>
   );

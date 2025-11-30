@@ -2,9 +2,8 @@ import React from 'react';
 import * as Icons from 'lucide-react';
 import { LucideProps } from 'lucide-react';
 
-interface IconProps extends Partial<LucideProps> {
+interface IconProps extends LucideProps {
   name: string;
-  className?: string;
 }
 
 export const Icon: React.FC<IconProps> = ({ name, ...props }) => {

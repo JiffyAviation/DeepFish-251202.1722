@@ -9,25 +9,31 @@ export interface Message {
   role: Role;
   text: string;
   timestamp: Date;
-  agentId?: AgentId; // The specific agent speaking
+  agentId?: AgentId; // The specific agent speaking (e.g., Creative, Skillz)
   isError?: boolean;
   isToolCall?: boolean; // Visual indicator that this was a system action
   image?: string; // Base64 image data
 }
 
 export enum AgentId {
-  MEI = 'mei',
+  MEI = 'mei', // Formerly Mid
   VESPER = 'vesper',
   HR = 'hr',
-  IT = 'it',
-  ROOT = 'root', // The System Core Personified
+  ABACUS = 'abacus',
   SKILLZ = 'skillz',
+  MCP = 'mcp',
   SLASH = 'slash',
+  SUBS = 'subs',
   CREATIVE = 'creative', // Hanna
   SOCIAL = 'social', // Sally
   QC = 'qc',
   SHIPPING = 'shipping',
+  IT = 'it',
   CALL_CENTER = 'call_center',
+  LUNCHROOM = 'lunchroom',
+  THE_ORACLE = 'the_oracle', // Old Man Root
+  ROOT = 'root', // The actual Root character
+  ORACLE = 'oracle', // The Abstract Architect
   SKIPPY = 'skippy',
   IGOR = 'igor'
 }
@@ -39,7 +45,7 @@ export interface AgentProfile {
   description: string;
   icon: string; // Lucide icon name
   color: string; // Tailwind color class
-  isCore?: boolean; // If true, listed in Executive group
+  isCore?: boolean; // If true, always visible in roster
   model?: string; // The underlying model name (conceptually)
   hookName?: string; // Marketing name for the API hook (e.g., "DeepLogic Pro")
   voiceId?: string; // ElevenLabs Voice ID
@@ -47,11 +53,21 @@ export interface AgentProfile {
   customInstructions?: string; // The mutable layer managed by HR
 }
 
+export interface Room {
+  id: string;
+  name: string;
+  agentId: AgentId; // The primary agent running this room (or 'abacus' for boardroom)
+  description: string;
+  themeColor: string;
+  isBoardroom?: boolean;
+  isLunchroom?: boolean;
+}
+
 export interface Memory {
   id: string;
   content: string;
   category: 'actionable' | 'memory' | 'reference' | 'personality';
-  triggerContext?: string;
+  triggerContext?: string; // e.g., "visiting parents", "start of q3"
   timestamp: Date;
 }
 
@@ -90,6 +106,10 @@ export interface StoreMemoryArgs {
   content: string;
   category: 'actionable' | 'memory' | 'reference' | 'personality';
   trigger_context?: string;
+}
+
+export interface RaffleActionArgs {
+  action: 'add_ticket' | 'spin_gacha';
 }
 
 export interface SendMemoArgs {

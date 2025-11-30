@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AgentProfile, AgentId } from '../types';
 import { AGENTS } from '../constants'; // Import agents for Igor lookup
@@ -6,7 +7,6 @@ import { Icon } from './Icon';
 interface LabsProps {
   agents: Record<string, AgentProfile>;
   onCreateAgent: (agent: AgentProfile) => void;
-  agentToEdit: AgentProfile | null;
 }
 
 const COLORS = [
@@ -17,17 +17,17 @@ const COLORS = [
   'text-rose-400'
 ];
 
-const ICONS = ['Bot', 'Cpu', 'Ghost', 'ScanFace', 'Sparkles', 'Zap', 'Brain', 'Code', 'Database', 'Globe', 'Anchor', 'Aperture', 'Atom', 'Box', 'Briefcase', 'Camera', 'Cast', 'Circle', 'Cloud', 'Coffee', 'Command', 'Compass', 'Component', 'Disc', 'Divide', 'Dna', 'DollarSign', 'Droplet', 'Eye', 'Feather', 'Figma', 'File', 'Filter', 'Flag', 'Flame', 'Flashlight', 'Flower', 'Folder', 'Frown', 'Gamepad', 'Gift', 'GitBranch', 'Grid', 'HardDrive', 'Hash', 'Headphones', 'Heart', 'Hexagon', 'Image', 'Inbox', 'Info', 'Key', 'Layers', 'Layout', 'LifeBuoy', 'Link', 'List', 'Lock', 'Mail', 'Map', 'Maximize', 'Meh', 'Menu', 'MessageCircle', 'MessageSquare', 'Mic', 'Minimize', 'Minus', 'Monitor', 'Moon', 'MoreHorizontal', 'MoreVertical', 'MousePointer', 'Move', 'Music', 'Navigation', 'Network', 'Octagon', 'Package', 'Paperclip', 'Pause', 'PenTool', 'Percent', 'Phone', 'PieChart', 'Play', 'PlayCircle', 'Plus', 'PlusCircle', 'PlusSquare', 'Pocket', 'Power', 'Printer', 'Radio', 'ShieldAlert', 'Share2', 'Terminal', 'Users', 'Landmark', 'Palette', 'GitMerge', 'FlaskConical', 'ClipboardCheck', 'Package'];
+const ICONS = ['Bot', 'Cpu', 'Ghost', 'ScanFace', 'Sparkles', 'Zap', 'Brain', 'Code', 'Database', 'Globe', 'Anchor', 'Aperture', 'Atom', 'Box', 'Briefcase', 'Camera', 'Cast', 'Circle', 'Cloud', 'Coffee', 'Command', 'Compass', 'Component', 'Disc', 'Divide', 'Dna', 'DollarSign', 'Droplet', 'Eye', 'Feather', 'Figma', 'File', 'Filter', 'Flag', 'Flame', 'Flashlight', 'Flower', 'Folder', 'Frown', 'Gamepad', 'Gift', 'GitBranch', 'Grid', 'HardDrive', 'Hash', 'Headphones', 'Heart', 'Hexagon', 'Image', 'Inbox', 'Info', 'Key', 'Layers', 'Layout', 'LifeBuoy', 'Link', 'List', 'Lock', 'Mail', 'Map', 'Maximize', 'Meh', 'Menu', 'MessageCircle', 'MessageSquare', 'Mic', 'Minimize', 'Minus', 'Monitor', 'Moon', 'MoreHorizontal', 'MoreVertical', 'MousePointer', 'Move', 'Music', 'Navigation', 'Network', 'Octagon', 'Package', 'Paperclip', 'Pause', 'PenTool', 'Percent', 'Phone', 'PieChart', 'Play', 'PlayCircle', 'Plus', 'PlusCircle', 'PlusSquare', 'Pocket', 'Power', 'Printer', 'Radio', 'ShieldAlert', 'Share2', 'Terminal', 'Users', 'Landmark', 'Palette', 'GitMerge', 'FlaskConical'];
 
 const HOOKS = [
-  { id: 'gemini-2.5-flash', name: 'Hyper-Flash', desc: 'Standard Intelligence', color: 'text-blue-400' },
-  { id: 'gemini-3-pro-preview', name: 'DeepLogic Pro', desc: 'Reasoning & Code', color: 'text-amber-400' },
-  { id: 'gemini-2.5-flash-image', name: 'Nano-Banana', desc: 'Vision & Imaging', color: 'text-pink-400' }
+  { id: 'gemini-2.5-flash', name: 'Hyper-Flash', desc: 'Fast, Standard Intelligence', color: 'text-blue-400' },
+  { id: 'gemini-3-pro-preview', name: 'DeepLogic Pro', desc: 'Advanced Reasoning & Code', color: 'text-amber-400' },
+  { id: 'gemini-2.5-flash-image', name: 'Nano-Banana', desc: 'Visual Generation Capable', color: 'text-pink-400' }
 ];
 
-export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent, agentToEdit }) => {
+export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [igorComment, setIgorComment] = useState("Awaiting command.");
+  const [igorComment, setIgorComment] = useState("Awaiting your command, Master.");
   
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
@@ -37,24 +37,15 @@ export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent, agentToEdit }
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [selectedHook, setSelectedHook] = useState(HOOKS[0]);
 
-  // Sync prop to local state
-  useEffect(() => {
-      if (agentToEdit) {
-          loadAgentForEditing(agentToEdit);
-      } else {
-          resetForm();
-      }
-  }, [agentToEdit]);
-
   // Igor Effects
   useEffect(() => {
-    if (editingId) setIgorComment("Modifying existing neural pathways.");
-    else setIgorComment("Initializing fresh neural substrate.");
+    if (editingId) setIgorComment("Ah, re-stitching an existing soul! Excellent!");
+    else setIgorComment("A fresh body! Shall we give it a brain?");
   }, [editingId]);
 
   useEffect(() => {
-    if (selectedHook.id === 'gemini-3-pro-preview') setIgorComment("Logic Core selected. High compute.");
-    else if (selectedHook.id === 'gemini-2.5-flash-image') setIgorComment("Visual Cortex attached.");
+    if (selectedHook.id === 'gemini-3-pro-preview') setIgorComment("Yesss! The Big Brain! DeepLogic Pro is powerful!");
+    else if (selectedHook.id === 'gemini-2.5-flash-image') setIgorComment("Nano-Banana! It will have eyes to see!");
   }, [selectedHook]);
 
   const loadAgentForEditing = (agent: AgentProfile) => {
@@ -79,7 +70,7 @@ export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent, agentToEdit }
     setSelectedIcon('Bot');
     setSelectedColor(COLORS[0]);
     setSelectedHook(HOOKS[0]);
-    setIgorComment("Standby.");
+    setIgorComment("Back to the drawing board, Master.");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -105,7 +96,7 @@ export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent, agentToEdit }
     };
 
     onCreateAgent(newAgent);
-    setIgorComment("CONSTRUCT ACTIVE.");
+    setIgorComment("IT'S ALIVE! IT'S ALIVE!");
     setTimeout(() => {
         resetForm();
     }, 1500);
@@ -114,80 +105,87 @@ export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent, agentToEdit }
   const igor = AGENTS[AgentId.IGOR] || { name: 'Igor', color: 'text-lime-600', icon: 'FlaskConical' };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-zinc-950/90 backdrop-blur-xl overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden">
       {/* IGOR HEADER */}
-      <header className="h-16 border-b border-white/5 flex items-center px-8 bg-zinc-900/50 justify-between relative overflow-hidden">
+      <header className="h-20 border-b border-zinc-800 flex items-center px-6 bg-zinc-900/50 backdrop-blur-md justify-between relative overflow-hidden">
         <div className="flex items-center gap-4 z-10">
-          <div className={`p-2 rounded-md border border-zinc-700 bg-zinc-800 ${igor.color}`}>
-            <Icon name={igor.icon} className="w-5 h-5" />
+          <div className={`p-3 rounded-xl border border-zinc-700 bg-zinc-800 ${igor.color}`}>
+            <Icon name={igor.icon} className="w-8 h-8" />
           </div>
           <div>
-            <h2 className={`text-sm font-bold tracking-widest uppercase text-white`}>Bio-Digital Laboratory</h2>
+            <h2 className={`text-xl font-bold ${igor.color}`}>The Labs</h2>
             <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-mono ${igor.color}`}>STATUS: {igorComment}</span>
+                <span className="text-xs text-zinc-500 uppercase tracking-widest font-bold">ASSISTANT: IGOR</span>
+                <span className="text-xs text-zinc-400 italic">"{igorComment}"</span>
             </div>
           </div>
         </div>
         
+        {/* Dynamic Igor Commentary Bubble (Visual Flourish) */}
+        <div className="hidden md:block absolute right-32 top-1/2 -translate-y-1/2 opacity-10">
+             <Icon name="Zap" className="w-32 h-32 text-lime-500" />
+        </div>
+
         {editingId && (
             <button 
                 onClick={resetForm}
-                className="z-10 text-[10px] uppercase font-bold text-red-400 hover:text-red-300 flex items-center gap-2 bg-red-900/10 px-3 py-1.5 rounded border border-red-900/30 hover:bg-red-900/20 transition-colors"
+                className="z-10 text-xs text-red-400 hover:text-red-300 flex items-center gap-1 bg-red-900/20 px-3 py-1.5 rounded-full border border-red-900/50"
             >
                 <Icon name="X" className="w-3 h-3" />
-                Abort Modification
+                Cancel
             </button>
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 xl:grid-cols-2 gap-12">
+      <div className="flex-1 overflow-y-auto p-6 md:p-12">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
           
-          {/* Form - Blueprint Style */}
-          <div className="space-y-6">
-            <div className="space-y-2">
-               <div className="flex items-center justify-between">
-                   <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
-                       {editingId ? `// RE-CALIBRATING: ${name}` : '// INITIALIZING NEW CONSTRUCT'}
-                   </h3>
-                   <span className="text-[10px] text-zinc-700 font-mono">SYS.VER.2.1</span>
-               </div>
-               <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-zinc-700 to-transparent"></div>
+          {/* Form */}
+          <div className="space-y-8">
+            <div className="space-y-4">
+               <h3 className="text-xl font-bold text-white">
+                   {editingId ? `Tuning: ${name}` : 'Construct New Agent'}
+               </h3>
+               <p className="text-zinc-400 text-sm">
+                   {editingId 
+                    ? "Adjust the personality, logic, or neural hook of this active agent."
+                    : "Define the core identity, neural hook, and purpose of a new specialist."}
+               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">Identity Designation</label>
+              <div className="space-y-2">
+                <label className="text-xs uppercase font-bold text-zinc-500">Name</label>
                 <input 
                   type="text" 
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Architect"
-                  className="w-full bg-zinc-900/50 border border-zinc-700 rounded-sm p-3 text-zinc-100 focus:outline-none focus:border-indigo-500/50 focus:bg-zinc-900 transition-colors placeholder-zinc-700 font-mono text-sm"
+                  placeholder="e.g., Architect, Reviewer"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-3 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">Functional Role</label>
+                <div className="space-y-2">
+                  <label className="text-xs uppercase font-bold text-zinc-500">Title</label>
                   <input 
                     type="text" 
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     placeholder="e.g. Senior Engineer"
-                    className="w-full bg-zinc-900/50 border border-zinc-700 rounded-sm p-3 text-zinc-100 focus:outline-none focus:border-indigo-500/50 focus:bg-zinc-900 transition-colors placeholder-zinc-700 font-mono text-sm"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-3 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
                   />
                 </div>
-                <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">Signature Color</label>
-                    <div className="flex flex-wrap gap-2 p-2.5 bg-zinc-900/50 border border-zinc-700 rounded-sm h-[46px] overflow-y-auto">
+                <div className="space-y-2">
+                    <label className="text-xs uppercase font-bold text-zinc-500">Color</label>
+                    <div className="flex flex-wrap gap-2 p-3 bg-zinc-900 border border-zinc-800 rounded-md h-[50px] overflow-y-auto">
                         {COLORS.map(c => (
                             <button
                                 key={c}
                                 type="button"
                                 onClick={() => setSelectedColor(c)}
-                                className={`w-3 h-3 rounded-sm ${c.replace('text-', 'bg-')} ${selectedColor === c ? 'ring-2 ring-white scale-110' : 'opacity-40 hover:opacity-100'} transition-all`}
+                                className={`w-4 h-4 rounded-full ${c.replace('text-', 'bg-')} ${selectedColor === c ? 'ring-2 ring-white' : 'opacity-50 hover:opacity-100'}`}
                             />
                         ))}
                     </div>
@@ -195,9 +193,10 @@ export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent, agentToEdit }
               </div>
 
               {/* API Hook Selector */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider flex justify-between">
-                   <span>Neural Hook (Model Architecture)</span>
+              <div className="space-y-2">
+                <label className="text-xs uppercase font-bold text-zinc-500 flex justify-between">
+                   <span>Neural Hook (API Model)</span>
+                   <span className="text-indigo-400">Premium Feature</span>
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   {HOOKS.map(hook => (
@@ -205,157 +204,122 @@ export const Labs: React.FC<LabsProps> = ({ agents, onCreateAgent, agentToEdit }
                       key={hook.id}
                       type="button"
                       onClick={() => setSelectedHook(hook)}
-                      className={`flex items-center justify-between p-3 rounded-sm border transition-all relative overflow-hidden group
+                      className={`flex items-center justify-between p-3 rounded-md border transition-all
                         ${selectedHook.id === hook.id 
-                          ? 'bg-indigo-900/10 border-indigo-500/40 ring-1 ring-indigo-500/20' 
-                          : 'bg-zinc-900/30 border-zinc-800 hover:bg-zinc-900'}
+                          ? 'bg-indigo-900/20 border-indigo-500 ring-1 ring-indigo-500' 
+                          : 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800'}
                       `}
                     >
-                      <div className="flex flex-col items-start z-10">
-                        <span className={`text-xs font-bold font-mono ${hook.color}`}>{hook.name}</span>
+                      <div className="flex flex-col items-start">
+                        <span className={`text-sm font-bold ${hook.color}`}>{hook.name}</span>
                         <span className="text-[10px] text-zinc-500">{hook.desc}</span>
                       </div>
-                      {selectedHook.id === hook.id && (
-                          <div className={`w-2 h-2 rounded-full ${hook.color.replace('text-', 'bg-')} shadow-[0_0_5px_currentColor]`}></div>
-                      )}
+                      {selectedHook.id === hook.id && <Icon name="Check" className="w-4 h-4 text-indigo-400" />}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">Mission Parameters</label>
+              <div className="space-y-2">
+                <label className="text-xs uppercase font-bold text-zinc-500">Description</label>
                 <input 
                   type="text" 
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Brief summary..."
-                  className="w-full bg-zinc-900/50 border border-zinc-700 rounded-sm p-3 text-zinc-100 focus:outline-none focus:border-indigo-500/50 focus:bg-zinc-900 transition-colors placeholder-zinc-700 font-mono text-sm"
+                  placeholder="Short summary of their role..."
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-3 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                 <label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">Visual Iconography</label>
-                 <div className="grid grid-cols-8 gap-2 p-3 bg-zinc-900/50 border border-zinc-700 rounded-sm h-[120px] overflow-y-auto">
+              <div className="space-y-2">
+                 <label className="text-xs uppercase font-bold text-zinc-500">Icon</label>
+                 <div className="grid grid-cols-8 gap-2 p-4 bg-zinc-900 border border-zinc-800 rounded-md h-[150px] overflow-y-auto">
                     {ICONS.map(iconName => (
                         <button
                             key={iconName}
                             type="button"
                             onClick={() => setSelectedIcon(iconName)}
-                            className={`flex items-center justify-center p-1.5 rounded hover:bg-zinc-800 transition-colors ${selectedIcon === iconName ? 'bg-indigo-600 text-white shadow-md' : 'text-zinc-600'}`}
+                            className={`flex items-center justify-center p-2 rounded hover:bg-zinc-800 ${selectedIcon === iconName ? 'bg-indigo-600 text-white' : 'text-zinc-500'}`}
                             title={iconName}
                         >
-                            <Icon name={iconName} className="w-4 h-4" />
+                            <Icon name={iconName} className="w-5 h-5" />
                         </button>
                     ))}
                  </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">Kernel Logic (System Prompt)</label>
+              <div className="space-y-2">
+                <label className="text-xs uppercase font-bold text-zinc-500">System Instructions (Base Prompt)</label>
                 <textarea 
                   value={basePrompt}
                   onChange={e => setBasePrompt(e.target.value)}
-                  placeholder="Define behavior parameters..."
-                  className="w-full bg-zinc-900/50 border border-zinc-700 rounded-sm p-3 text-zinc-200 h-32 resize-none focus:outline-none focus:border-indigo-500/50 focus:bg-zinc-900 transition-colors font-mono text-xs leading-relaxed"
+                  placeholder="You are X. Your goal is Y. You speak like Z..."
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-3 text-zinc-200 h-40 resize-none focus:outline-none focus:border-indigo-500 transition-colors font-mono text-sm"
                   required
                 />
               </div>
 
               <button 
                 type="submit"
-                className="w-full bg-zinc-100 hover:bg-white text-black font-bold py-3 rounded-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
+                className="w-full bg-lime-700 hover:bg-lime-600 text-white font-bold py-3 rounded-md transition-all shadow-lg shadow-lime-900/20 flex items-center justify-center gap-2"
               >
-                <Icon name="Zap" className="w-4 h-4" />
-                {editingId ? "Upload New Config" : "Activate Construct"}
+                <Icon name="Zap" className="w-5 h-5" />
+                {editingId ? "Update Configuration" : "THROW THE SWITCH!"}
               </button>
 
             </form>
           </div>
 
-          {/* Preview Panel */}
-          <div className="space-y-6">
-             <div className="space-y-2">
-               <div className="flex items-center justify-between">
-                   <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
-                       // SPECIMEN PREVIEW
-                   </h3>
-               </div>
-               <div className="h-px w-full bg-gradient-to-r from-zinc-800 via-zinc-700 to-transparent"></div>
+          {/* Preview */}
+          <div className="space-y-8">
+             <div className="space-y-4">
+               <h3 className="text-xl font-bold text-white">Specimen Preview</h3>
+               <p className="text-zinc-400 text-sm">Visual confirmation of the entity.</p>
             </div>
             
-            {/* The Card - ID Badge Style */}
-            <div className="bg-zinc-950 rounded-lg p-1 shadow-2xl border border-zinc-800 relative overflow-hidden group ring-1 ring-white/5 max-w-sm mx-auto">
-                {/* Tech lines */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-zinc-700 to-transparent opacity-50"></div>
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                
-                <div className="bg-zinc-900/90 backdrop-blur-sm rounded-md p-6 flex flex-col items-center text-center relative z-10 h-full">
-                    
-                    {/* Top Labels */}
-                    <div className="w-full flex justify-between items-start mb-6">
-                        <div className="font-mono text-[9px] text-zinc-600 flex flex-col items-start">
-                            <span>ID: {editingId ? editingId.toUpperCase() : 'UNDEFINED'}</span>
-                            <span>CLASS: {selectedHook.name.toUpperCase()}</span>
-                        </div>
-                        <div className="w-8 h-8 opacity-20">
-                             <Icon name="QrCode" className="w-full h-full text-white" />
-                        </div>
-                    </div>
-
-                    {/* Avatar */}
-                    <div className="relative mb-6">
-                        <div className={`w-20 h-20 rounded-md flex items-center justify-center bg-zinc-950 border border-zinc-700 ${selectedColor} shadow-lg relative z-10`}>
-                             <Icon name={selectedIcon} className="w-8 h-8" />
-                        </div>
-                        {/* Glow under */}
-                        <div className={`absolute inset-0 bg-current blur-xl opacity-20 ${selectedColor}`}></div>
-                    </div>
-                    
-                    <h2 className={`text-2xl font-bold mb-1 tracking-tight ${selectedColor}`}>{name || "Construct Name"}</h2>
-                    <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-widest mb-6">{title || "Function"}</p>
-                    
-                    {/* Stats/Details */}
-                    <div className="w-full space-y-2 border-t border-dashed border-zinc-800 pt-4">
-                        <div className="flex justify-between items-center text-[10px] font-mono">
-                            <span className="text-zinc-600">STATUS</span>
-                            <span className="text-emerald-500">ONLINE</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] font-mono">
-                            <span className="text-zinc-600">MEMORY</span>
-                            <span className="text-zinc-400">128TB</span>
-                        </div>
-                        <p className="text-zinc-500 text-xs leading-snug pt-2 text-left">{description || "Pending input..."}</p>
-                    </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col gap-6 items-center text-center relative overflow-hidden shadow-2xl">
+                <div className={`absolute top-0 right-0 p-2 text-[10px] font-bold uppercase tracking-wider bg-zinc-800/50 rounded-bl-xl ${selectedHook.color}`}>
+                  {selectedHook.name}
                 </div>
-                {/* Bottom Bar */}
-                <div className="h-2 w-full bg-zinc-800 mt-1 flex">
-                    <div className={`w-1/3 h-full ${selectedColor.replace('text-', 'bg-')} opacity-50`}></div>
-                    <div className="w-1/3 h-full bg-zinc-700 opacity-30"></div>
+                <div className={`w-24 h-24 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center ${selectedColor} shadow-inner`}>
+                    <Icon name={selectedIcon} className="w-12 h-12" />
+                </div>
+                <div>
+                    <h2 className={`text-2xl font-bold ${selectedColor}`}>{name || "Agent Name"}</h2>
+                    <p className="text-zinc-400 font-medium">{title || "Agent Title"}</p>
+                </div>
+                <div className="bg-zinc-950 p-4 rounded-lg w-full text-left border border-zinc-800/50">
+                    <p className="text-sm text-zinc-500 italic mb-2">Description</p>
+                    <p className="text-zinc-300 text-sm">{description || "No description provided."}</p>
+                </div>
+                 <div className="bg-zinc-950 p-4 rounded-lg w-full text-left border border-zinc-800/50">
+                    <p className="text-sm text-zinc-500 italic mb-2">System Prompt</p>
+                    <p className="text-zinc-400 font-mono text-xs whitespace-pre-wrap">{basePrompt || "..."}</p>
                 </div>
             </div>
 
-            <div className="space-y-4 pt-4">
-                <h3 className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-                    Available Units (Select to Tune)
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-4 pt-8">
+                <h3 className="text-xl font-bold text-white">Active Roster (Select to Tune)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {(Object.values(agents) as AgentProfile[]).map(agent => (
                         <button 
                             key={agent.id} 
                             onClick={() => loadAgentForEditing(agent)}
-                            className={`flex items-center gap-3 p-2 rounded-sm border transition-all text-left relative group
+                            className={`flex items-center gap-3 p-3 rounded border transition-all text-left
                                 ${editingId === agent.id 
-                                    ? 'bg-zinc-800 border-zinc-600' 
-                                    : 'bg-zinc-900/40 border-zinc-800/50 hover:bg-zinc-800 hover:border-zinc-700'}
+                                    ? 'bg-lime-900/20 border-lime-500 ring-1 ring-lime-500' 
+                                    : 'bg-zinc-900/50 border-zinc-800/50 hover:bg-zinc-800 hover:border-zinc-700'}
                             `}
                         >
-                             <div className={`w-8 h-8 rounded-sm bg-zinc-950 border border-zinc-800 flex items-center justify-center shrink-0 ${agent.color}`}>
+                             {agent.hookName && (
+                               <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-indigo-500"></div>
+                             )}
+                             <div className={`w-8 h-8 rounded bg-zinc-800 flex items-center justify-center shrink-0 ${agent.color}`}>
                                  <Icon name={agent.icon} className="w-4 h-4" />
                              </div>
                              <div className="flex flex-col overflow-hidden">
-                                 <span className="text-xs font-bold text-zinc-300 truncate group-hover:text-white transition-colors">{agent.name}</span>
-                                 <span className="text-[9px] text-zinc-600 truncate font-mono">{agent.hookName || "Standard"}</span>
+                                 <span className="text-sm font-semibold text-zinc-300 truncate">{agent.name}</span>
+                                 <span className="text-[10px] text-zinc-500 truncate">{agent.hookName || "Standard"}</span>
                              </div>
                         </button>
                     ))}
