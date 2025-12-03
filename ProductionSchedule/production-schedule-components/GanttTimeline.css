@@ -1,0 +1,20 @@
+.gantt-timeline {
+  background: #0a0a0a;
+  border-bottom: 2px solid #333;
+  overflow: hidden;
+  user-select: none;
+}
+
+.gantt-timeline svg {
+  display: block;
+}
+
+.gantt-timeline text {
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Current time marker animation */
+.gantt-timeline circle {
+  filter: drop-shadow(0 0 4px #ff6600);
+}

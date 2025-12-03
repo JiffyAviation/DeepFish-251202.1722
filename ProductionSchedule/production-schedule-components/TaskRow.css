@@ -1,0 +1,101 @@
+.task-row-container {
+  width: 100%;
+}
+
+.task-row {
+  display: flex;
+  height: 50px;
+  border-bottom: 1px solid #222;
+}
+
+.task-label {
+  width: 250px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: #0a0a0a;
+  border-right: 1px solid #333;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.indent-marker {
+  color: #666;
+  margin-right: 5px;
+  font-family: monospace;
+}
+
+.task-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-timeline {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.task-timeline svg {
+  display: block;
+}
+
+/* Progress marker animation */
+.progress-marker {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* Golden glow for completed tasks */
+@keyframes golden-pulse {
+  0%, 100% { 
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+  }
+  50% { 
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1));
+  }
+}
+
+.golden-glow {
+  stroke: #ffd700;
+  stroke-width: 2;
+  animation: golden-pulse 2s ease-in-out infinite;
+}
+
+/* Red breathing glow for blocked tasks */
+@keyframes red-breathe {
+  0%, 100% { 
+    filter: drop-shadow(0 0 8px rgba(255, 0, 0, 0.6));
+    stroke: rgba(255, 0, 0, 0.8);
+  }
+  50% { 
+    filter: drop-shadow(0 0 20px rgba(255, 0, 0, 1));
+    stroke: rgba(255, 0, 0, 1);
+  }
+}
+
+.red-breathing-glow {
+  stroke-width: 3;
+  animation: red-breathe 1.5s ease-in-out infinite;
+}
+
+/* Breathing border for completed agent segments */
+@keyframes breathing-border {
+  0%, 100% { 
+    opacity: 0.5;
+  }
+  50% { 
+    opacity: 1;
+  }
+}
+
+.breathing-border {
+  animation: breathing-border 2s ease-in-out infinite;
+}
+
+/* Hover effects */
+.task-timeline g:hover rect {
+  filter: brightness(1.3);
+  transition: filter 0.2s;
+}

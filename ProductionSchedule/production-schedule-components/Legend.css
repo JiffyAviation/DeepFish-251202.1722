@@ -1,0 +1,49 @@
+/* Legend styles */
+.legend {
+  padding: 20px;
+  background: #0a0a0a;
+  border-top: 1px solid #333;
+}
+
+.legend h4 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.legend-item span {
+  font-size: 13px;
+  color: #ccc;
+  font-weight: 500;
+}
+
+/* Tasks container */
+.tasks-container {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
